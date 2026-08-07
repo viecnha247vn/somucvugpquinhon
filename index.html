@@ -182,6 +182,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
     <button id="nav_hd" onclick="showTab('hd')">Hội đoàn</button>
     <button id="nav_sub" onclick="showTab('sub')">Đơn gửi về <span id="subBadge" class="badge hidden">0</span></button>
     <button id="nav_gh" onclick="showTab('gh')">Giáo họ</button>
+    <button id="nav_help" onclick="openGuide()">Hướng dẫn</button>
   </nav>
 
   <main>
@@ -484,6 +485,7 @@ async function doCreateParish(){
 }
 function cpMsg(t,k){$('cpMsg').innerHTML=`<div class="msg ${k}">${esc(t)}</div>`;}
 async function doLogout(){await sb.auth.signOut();location.reload();}
+function openGuide(){window.open('giaoxu_cam_nang.html','_blank');}
 
 /* ---------- BOOT ---------- */
 async function boot(){

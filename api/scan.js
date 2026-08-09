@@ -1,16 +1,16 @@
 // ============================================================
 //  Hàm máy chủ (Vercel Serverless Function) — QUÉT AI (Google Gemini)
-//  Nhận ảnh từ app, gọi Gemini API để đọc, trả JSON.
+//  Đọc ảnh Sổ Rửa tội / Chứng nhận Hôn phối, trả JSON.
 //  KHÓA API nằm ở biến môi trường trên Vercel, KHÔNG lộ ra client.
 //
 //  Cài đặt 1 lần:
 //   1) Đặt file này tại  api/scan.js  ở gốc repo (cùng chỗ index.html).
 //   2) Lấy khóa Gemini tại  https://aistudio.google.com/apikey
-//   3) Vercel → Project → Settings → Environment Variables:
-//        GEMINI_API_KEY = <khóa vừa lấy>
-//        (tùy chọn) GEMINI_MODEL = gemini-3.6-flash  (hoặc gemini-3.5-flash-lite nếu bị quá tải)
+//   3) Vercel → Settings → Environment Variables:
+//        GEMINI_API_KEY = <khóa>
+//        (tùy chọn) GEMINI_MODEL = gemini-3.6-flash  (hoặc gemini-3.5-flash-lite nếu quá tải)
 //   4) Deploy lại.
-//  Khóa AIza (cũ) và AQ. (mới) đều gửi qua header x-goog-api-key (KHÔNG dùng Bearer).
+//  Khóa AIza (cũ) và AQ. (mới) đều gửi qua x-goog-api-key (KHÔNG dùng Bearer).
 // ============================================================
 
 module.exports = async function handler(req, res) {
@@ -33,38 +33,48 @@ module.exports = async function handler(req, res) {
     const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
     const prompt =
-`Bạn đọc ảnh chụp một trang SỔ RỬA TỘI (hoặc sổ bộ / giấy chứng nhận) của giáo xứ Công giáo Việt Nam, có thể viết tay, cũ hoặc mờ. Trích xuất thông tin của MỘT giáo dân chính trong ảnh, đúng theo các mục có trên sổ.
+`Bạn đọc ảnh một trang sổ / giấy tờ của giáo xứ Công giáo Việt Nam — có thể là SỔ RỬA TỘI (một người) hoặc CHỨNG NHẬN HÔN PHỐI (hai người: BÊN NAM và BÊN NỮ). Có thể viết tay, cũ, mờ. Xác định loại giấy rồi trích xuất.
 
-Trả về một đối tượng JSON theo mẫu (đúng các khóa này):
+Trả về JSON theo mẫu (đúng khóa):
 {
-  "saint_name": "Tên thánh trong mục 'Tên' (vd Maria, Giuse) hoặc null",
-  "full_name": "Họ và tên trong mục 'Tên' (không gồm tên thánh) hoặc null",
+  "doc_type": "rua_toi | hon_phoi | khac",
+
+  // NẾU là giấy MỘT người (Sổ Rửa tội): điền các trường phẳng này, để "parties": []
+  "saint_name": "Tên thánh (mục 'Tên') hoặc null",
+  "full_name": "Họ và tên (không gồm tên thánh) hoặc null",
   "gender": "nam | nu | null",
-  "birth_date": "mục 'Sinh': YYYY-MM-DD; chỉ có năm thì YYYY-01-01; không rõ null",
-  "birth_lunar": "mục 'Âm lịch' (vd '29/07 Đinh Dậu') hoặc null",
+  "birth_date": "mục 'Sinh' YYYY-MM-DD; chỉ năm → YYYY-01-01; null",
+  "birth_lunar": "mục 'Âm lịch' hoặc null",
   "birth_place": "mục 'Tại' (nơi sinh) hoặc null",
-  "father_name": "mục 'Cha' (kèm tên thánh) hoặc null",
-  "mother_name": "mục 'Mẹ' (kèm tên thánh) hoặc null",
-  "feast_day": "mục 'Ngày lễ bổn mạng' (vd '15.08') hoặc null",
+  "father_name": "mục 'Cha' hoặc null",
+  "mother_name": "mục 'Mẹ' hoặc null",
+  "feast_day": "mục 'Ngày lễ bổn mạng' hoặc null",
+  "origin_parish": "mục 'Giáo xứ' hoặc null",
   "sacraments": [
-    {
-      "type": "rua_toi | them_suc | thanh_the | hon_phoi | truyen_chuc | xuc_dau",
-      "sac_date": "ngày lãnh nhận (mục 'RỬA TỘI ngày'): YYYY-MM-DD hoặc null",
-      "place": "mục 'Tại nhà thờ' hoặc null",
-      "minister": "mục 'Do Linh mục' hoặc null",
-      "godparent": "mục 'Người đỡ đầu' hoặc null",
-      "book_no": "'Sổ Rửa tội số' (vd '93/2017') hoặc null",
-      "entry_no": "'Con thứ' (vd '01') hoặc null",
-      "spouse_name": "chỉ cho hôn phối, hoặc null"
-    }
+    {"type":"rua_toi|them_suc|thanh_the|hon_phoi|truyen_chuc|xuc_dau","sac_date":"YYYY-MM-DD|null","place":"nơi|null","minister":"Do Linh mục|null","godparent":"Người đỡ đầu|null","book_no":"Sổ số|null","entry_no":"Con thứ|null","spouse_name":"chỉ hôn phối|null"}
   ],
-  "note": "ghi chú ngắn về chỗ không chắc chắn, hoặc null"
+
+  // NẾU là CHỨNG NHẬN HÔN PHỐI: điền 2 phần dưới, để các trường phẳng trên = null
+  "marriage_book_no": "Sổ Hôn phối số (vd '32/2015') hoặc null",
+  "parties": [
+    {
+      "side": "nam | nu",
+      "saint_name": "...", "full_name": "...", "gender": "nam|nu",
+      "birth_date": "YYYY-MM-DD|null",
+      "father_name": "mục 'Cha'|null", "mother_name": "mục 'Mẹ'|null",
+      "origin_parish": "mục 'Giáo xứ'|null",
+      "sacraments": [
+        {"type":"rua_toi","sac_date":"YYYY-MM-DD|null","place":"mục 'Tại' ngay dưới 'Rửa tội'|null"},
+        {"type":"them_suc","sac_date":"YYYY-MM-DD|null","place":"mục 'Tại' ngay dưới 'Thêm sức'|null"}
+      ]
+    }
+  ]
 }
 
 Quy tắc bắt buộc:
-- Với Sổ Rửa tội: luôn đưa 1 phần tử type "rua_toi" vào "sacraments".
-- Ô nào không đọc được thì để null. TUYỆT ĐỐI KHÔNG bịa hay đoán.
-- Ngày tháng đưa về dạng số.`;
+- Sổ Rửa tội: doc_type "rua_toi", điền trường phẳng, luôn có 1 bí tích type "rua_toi", "parties": [].
+- Chứng nhận Hôn phối: doc_type "hon_phoi", "parties" gồm CẢ bên nam và bên nữ; mỗi bên lấy rửa tội + thêm sức (ngày và nơi). "marriage_book_no" lấy từ 'Sổ Hôn phối số'. Với hôn phối, "Tại" ngay dưới "Rửa tội" là nơi rửa tội, "Tại" ngay dưới "Thêm sức" là nơi thêm sức.
+- Ô không đọc được để null. TUYỆT ĐỐI KHÔNG bịa. Ngày dạng số.`;
 
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
     // Khóa AIza (cũ) và AQ. (mới) đều gửi qua x-goog-api-key. KHÔNG dùng Authorization: Bearer.

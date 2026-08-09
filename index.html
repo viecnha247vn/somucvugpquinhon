@@ -213,6 +213,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
         <input id="q_people" placeholder="Tìm tên / tên thánh…" oninput="renderPeople()"/>
         <select id="f_giaoho" onchange="renderPeople()"><option value="">Tất cả giáo họ</option></select>
         <button class="btn" onclick="openPerson()">+ Thêm</button>
+        <button class="btn gold" onclick="openMarriage()">Quét giấy hôn phối</button>
       </div>
       <div id="peopleList" class="list"></div>
     </section>
@@ -464,6 +465,26 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
     <div class="mh">Link khai báo cho gia đình</div>
     <p class="hint">Gửi link này để các gia đình tự điền hộ khẩu (không cần tài khoản). Đơn về sẽ nằm ở tab “Đơn gửi về”.</p>
     <div class="codebox small"><span class="val" id="sh_formlink">—</span><button class="copybtn" onclick="copyText(document.getElementById('sh_formlink').textContent,this)">Chép</button></div>
+  </div>
+</div>
+
+<!-- MARRIAGE MODAL -->
+<div id="marriageOverlay" class="overlay hidden">
+  <div class="modal">
+    <button class="close" onclick="closeMarriage()">×</button>
+    <h2 class="serif">Nhập giấy Hôn phối (2 bên)</h2>
+    <div class="ai-scan">
+      <input id="mr_file" type="file" accept="image/*" capture="environment" style="display:none" onchange="onMarriageScan(event)"/>
+      <button class="btn gold sm" onclick="document.getElementById('mr_file').click()">Quét ảnh giấy hôn phối</button>
+      <div class="hint" id="mr_status" style="margin-top:6px">Chụp/chọn ảnh Chứng nhận Hôn phối — một lần bấm, AI đọc cả hai bên, tạo 2 hồ sơ và liên kết cha mẹ, vợ chồng.</div>
+    </div>
+    <div id="mrPreview" class="hidden">
+      <label>Sổ Hôn phối số</label><input id="mr_book"/>
+      <div id="mrParties"></div>
+      <div class="modal-actions"><button class="btn" onclick="saveMarriage()">Lưu tất cả</button></div>
+      <div class="hint">Sẽ tạo 2 giáo dân (nam &amp; nữ), tạo hoặc liên kết cha mẹ mỗi bên, và liên kết vợ–chồng. Kiểm tra tên trước khi lưu.</div>
+    </div>
+    <div id="mrMsg"></div>
   </div>
 </div>
 
@@ -1065,6 +1086,100 @@ async function addAMember(){
   await loadAll();renderAMembers();
 }
 async function delAMember(id){await sb.from('association_members').delete().eq('id',id);await loadAll();renderAMembers();}
+
+/* ---------- GIẤY HÔN PHỐI: 1 lần → 2 bên + cha mẹ + liên kết ---------- */
+function openMarriage(){
+  window._marriageData=null;
+  $('mrPreview').classList.add('hidden');$('mrParties').innerHTML='';$('mrMsg').innerHTML='';
+  $('mr_status').textContent='Chụp/chọn ảnh Chứng nhận Hôn phối — một lần bấm, AI đọc cả hai bên, tạo 2 hồ sơ và liên kết cha mẹ, vợ chồng.';
+  $('marriageOverlay').classList.remove('hidden');
+}
+function closeMarriage(){$('marriageOverlay').classList.add('hidden');}
+function mrmsg(t,k){$('mrMsg').innerHTML=`<div class="msg ${k}">${esc(t)}</div>`;}
+async function onMarriageScan(ev){
+  const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  $('mr_status').textContent='Đang đọc ảnh… (5–15 giây)';
+  try{
+    const blob=await compress(f);const b64=await toB64(blob);
+    const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,media_type:'image/webp'})});
+    if(!r.ok){let t='';try{t=(await r.json()).error||'';}catch(e){}throw new Error('máy chủ AI lỗi '+r.status+(t?' — '+t:''));}
+    const d=await r.json();
+    if(d&&d.error){$('mr_status').textContent='AI chưa đọc được: '+d.error;return;}
+    if(!Array.isArray(d.parties)||!d.parties.length){$('mr_status').textContent='Ảnh này không phải giấy hôn phối 2 bên. Nếu là Sổ Rửa tội, hãy dùng “+ Thêm”.';return;}
+    window._marriageData=d;
+    $('mr_status').innerHTML='<b style="color:var(--wine)">AI đã đọc 2 bên — kiểm tra tên rồi bấm “Lưu tất cả”.</b>';
+    renderMarriagePreview();
+  }catch(e){$('mr_status').textContent='Không quét được: '+e.message+'.';}
+}
+function renderMarriagePreview(){
+  const d=window._marriageData;
+  $('mr_book').value=d.marriage_book_no||'';
+  $('mrParties').innerHTML=d.parties.map((p,i)=>{
+    const rt=(p.sacraments||[]).find(s=>s&&s.type==='rua_toi')||{};
+    const ts=(p.sacraments||[]).find(s=>s&&s.type==='them_suc')||{};
+    return `<div class="subcard">
+      <div class="mh" style="margin-top:0">${p.side==='nu'?'Bên nữ':(p.side==='nam'?'Bên nam':'Người '+(i+1))}</div>
+      <div class="grid2">
+        <div><label>Tên thánh</label><input id="mr_p${i}_saint" value="${esc(p.saint_name||'')}"/></div>
+        <div><label>Họ và tên</label><input id="mr_p${i}_name" value="${esc(p.full_name||'')}"/></div>
+        <div><label>Ngày sinh</label><input id="mr_p${i}_birth" type="date" value="${esc(p.birth_date||'')}"/></div>
+        <div><label>Giáo xứ (theo giấy)</label><input id="mr_p${i}_origin" value="${esc(p.origin_parish||'')}"/></div>
+        <div><label>Cha</label><input id="mr_p${i}_father" value="${esc(p.father_name||'')}"/></div>
+        <div><label>Mẹ</label><input id="mr_p${i}_mother" value="${esc(p.mother_name||'')}"/></div>
+      </div>
+      <div class="hint">Rửa tội: ${esc(rt.sac_date||'—')}${rt.place?' @ '+esc(rt.place):''} · Thêm sức: ${esc(ts.sac_date||'—')}${ts.place?' @ '+esc(ts.place):''}</div>
+    </div>`;
+  }).join('');
+  $('mrPreview').classList.remove('hidden');
+}
+async function createOrFindPerson(nameStr,gender){
+  if(!nameStr)return null;
+  const keyc=nameStr.toLowerCase().trim();
+  if(window._pcache&&window._pcache[keyc])return window._pcache[keyc];
+  const found=PEOPLE.find(p=>p.full_name&&((p.saint_name?p.saint_name+' ':'')+p.full_name).toLowerCase().trim()===keyc);
+  let id=null;
+  if(found)id=found.id;
+  else{const {data}=await sb.from('parishioners').insert({parish_id:PARISH.id,full_name:nameStr,gender:gender||null,status:'approved',created_by:ME.user_id}).select().maybeSingle();id=data?data.id:null;}
+  if(id&&window._pcache)window._pcache[keyc]=id;
+  return id;
+}
+async function saveMarriage(){
+  const d=window._marriageData;if(!d)return;
+  const book=$('mr_book').value.trim()||null;
+  window._pcache={};
+  mrmsg('Đang lưu…','ok');
+  const ids=[];
+  try{
+    for(let i=0;i<d.parties.length;i++){
+      const P=d.parties[i];
+      const saint=$('mr_p'+i+'_saint').value.trim();
+      const name=$('mr_p'+i+'_name').value.trim();
+      const father=$('mr_p'+i+'_father').value.trim();
+      const mother=$('mr_p'+i+'_mother').value.trim();
+      const gender=P.side==='nu'?'nu':(P.side==='nam'?'nam':null);
+      const father_id=await createOrFindPerson(father,'nam');
+      const mother_id=await createOrFindPerson(mother,'nu');
+      const rec={parish_id:PARISH.id,saint_name:saint||null,full_name:name||'(chưa rõ)',gender,
+        birth_date:$('mr_p'+i+'_birth').value||null,origin_parish:$('mr_p'+i+'_origin').value.trim()||null,
+        father_name:father||null,mother_name:mother||null,father_id,mother_id,status:'approved',created_by:ME.user_id};
+      const {data:pers,error}=await sb.from('parishioners').insert(rec).select().maybeSingle();
+      if(error)throw error;
+      ids[i]=pers.id;
+      const sacs=(P.sacraments||[]).filter(s=>s&&s.type).map(s=>({parish_id:PARISH.id,parishioner_id:pers.id,type:s.type,
+        sac_date:(s.sac_date&&/^\d{4}-\d{2}-\d{2}$/.test(s.sac_date))?s.sac_date:null,place:s.place||null}));
+      if(sacs.length)await sb.from('sacraments').insert(sacs);
+    }
+    if(ids.length>=2){
+      const n0=($('mr_p0_saint').value+' '+$('mr_p0_name').value).trim();
+      const n1=($('mr_p1_saint').value+' '+$('mr_p1_name').value).trim();
+      await sb.from('sacraments').insert([
+        {parish_id:PARISH.id,parishioner_id:ids[0],type:'hon_phoi',book_no:book,spouse_id:ids[1],spouse_name:n1},
+        {parish_id:PARISH.id,parishioner_id:ids[1],type:'hon_phoi',book_no:book,spouse_id:ids[0],spouse_name:n0}
+      ]);
+    }
+    await loadAll();closeMarriage();showTab('people');
+  }catch(e){mrmsg('Lỗi khi lưu: '+e.message,'err');}
+}
 
 /* ---------- START ---------- */
 (async function(){

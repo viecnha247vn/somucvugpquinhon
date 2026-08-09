@@ -281,6 +281,11 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
       <div><label>Họ và tên *</label><input id="p_name"/></div>
       <div><label>Giới tính</label><select id="p_gender"><option value="">—</option><option value="nam">Nam</option><option value="nu">Nữ</option></select></div>
       <div><label>Ngày sinh</label><input id="p_birth" type="date"/></div>
+      <div><label>Ngày sinh (âm lịch)</label><input id="p_birthlunar" placeholder="VD: 29/07 Đinh Dậu"/></div>
+      <div><label>Nơi sinh (Tại)</label><input id="p_birthplace"/></div>
+      <div><label>Cha</label><input id="p_father" placeholder="Tên thánh + họ tên"/></div>
+      <div><label>Mẹ</label><input id="p_mother" placeholder="Tên thánh + họ tên"/></div>
+      <div><label>Ngày lễ bổn mạng</label><input id="p_feast" placeholder="VD: 15.08"/></div>
       <div><label>Giáo họ</label><select id="p_giaoho"></select></div>
       <div><label>Hộ gia đình</label><select id="p_house"></select></div>
       <div><label>Quan hệ với chủ hộ</label><input id="p_relation" placeholder="Chủ hộ / Vợ / Con…"/></div>
@@ -321,9 +326,10 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
       <div><label>Ngày lãnh nhận</label><input id="s_date" type="date"/></div>
       <div><label>Nơi lãnh nhận</label><input id="s_place"/></div>
       <div><label>Linh mục / thừa tác viên</label><input id="s_minister"/></div>
+      <div><label>Người đỡ đầu</label><input id="s_godparent"/></div>
       <div id="spouseWrap" class="hidden"><label>Người phối ngẫu</label><input id="s_spouse"/></div>
-      <div><label>Số sổ</label><input id="s_book"/></div>
-      <div><label>Số thứ tự</label><input id="s_entry"/></div>
+      <div><label>Số sổ (VD Sổ Rửa tội số)</label><input id="s_book"/></div>
+      <div><label>Số thứ tự (Con thứ)</label><input id="s_entry"/></div>
     </div>
     <label>Ghi chú</label><input id="s_note"/>
     <div class="modal-actions">
@@ -626,6 +632,8 @@ async function openPerson(id){
   const p=editingPerson||{};
   $('p_saint').value=p.saint_name||'';$('p_name').value=p.full_name||'';
   $('p_gender').value=p.gender||'';$('p_birth').value=p.birth_date||'';
+  $('p_birthlunar').value=p.birth_lunar||'';$('p_birthplace').value=p.birth_place||'';
+  $('p_father').value=p.father_name||'';$('p_mother').value=p.mother_name||'';$('p_feast').value=p.feast_day||'';
   $('p_giaoho').value=p.giao_ho_id||'';$('p_house').value=p.household_id||'';
   $('p_relation').value=p.relation_head||'';$('p_phone').value=p.phone||'';
   $('p_note').value=p.note||'';$('p_dead').checked=!!p.is_deceased;$('p_deathdate').value=p.death_date||'';toggleDeath();
@@ -647,6 +655,8 @@ async function savePerson(){
   const rec={
     parish_id:PARISH.id, saint_name:val('p_saint'), full_name:name,
     gender:$('p_gender').value||null, birth_date:$('p_birth').value||null,
+    birth_lunar:val('p_birthlunar'), birth_place:val('p_birthplace'),
+    father_name:val('p_father'), mother_name:val('p_mother'), feast_day:val('p_feast'),
     giao_ho_id:$('p_giaoho').value||null, household_id:$('p_house').value||null,
     relation_head:val('p_relation'), phone:val('p_phone'), note:val('p_note'),
     is_deceased:$('p_dead').checked, death_date:$('p_deathdate').value||null,
@@ -663,7 +673,8 @@ async function savePerson(){
     const rows=window._aiSacs.filter(s=>s&&ok.includes(s.type)).map(s=>({
       parish_id:PARISH.id,parishioner_id:editingPerson.id,type:s.type,
       sac_date:(s.sac_date&&/^\d{4}-\d{2}-\d{2}$/.test(s.sac_date))?s.sac_date:null,
-      place:s.place||null,minister:s.minister||null,book_no:s.book_no||null,entry_no:s.entry_no||null,
+      place:s.place||null,minister:s.minister||null,godparent:s.godparent||null,
+      book_no:s.book_no||null,entry_no:s.entry_no||null,
       spouse_name:s.type==='hon_phoi'?(s.spouse_name||null):null}));
     if(rows.length)await sb.from('sacraments').insert(rows);
     window._aiSacs=[];
@@ -683,12 +694,12 @@ async function renderSacs(){
   const {data}=await sb.from('sacraments').select('*').eq('parishioner_id',editingPerson.id).order('sac_date');
   box.innerHTML=(data&&data.length)?data.map(s=>`<div class="sac-item">
     <div><div class="t">${SAC_LABELS[s.type]||s.type}</div>
-    <div class="d">${s.sac_date||'—'}${s.place?' · '+esc(s.place):''}${s.spouse_name?' · ⚭ '+esc(s.spouse_name):''}${s.book_no?' · sổ '+esc(s.book_no):''}</div></div>
+    <div class="d">${s.sac_date||'—'}${s.place?' · '+esc(s.place):''}${s.godparent?' · đỡ đầu '+esc(s.godparent):''}${s.spouse_name?' · ⚭ '+esc(s.spouse_name):''}${s.book_no?' · sổ '+esc(s.book_no):''}${s.entry_no?' · con thứ '+esc(s.entry_no):''}</div></div>
     <button class="btn danger sm" onclick="delSac('${s.id}')">Xóa</button></div>`).join(''):'<div class="hint">Chưa có bí tích.</div>';
 }
 function openSac(){
   if(!editingPerson)return pmsg('Hãy lưu giáo dân trước.','err');
-  ['s_date','s_place','s_minister','s_spouse','s_book','s_entry','s_note'].forEach(i=>$(i).value='');
+  ['s_date','s_place','s_minister','s_godparent','s_spouse','s_book','s_entry','s_note'].forEach(i=>$(i).value='');
   $('s_type').value='rua_toi';toggleSpouse();$('sacMsg').innerHTML='';
   $('sacOverlay').classList.remove('hidden');
 }
@@ -696,7 +707,7 @@ function closeSac(){$('sacOverlay').classList.add('hidden');}
 function toggleSpouse(){$('spouseWrap').classList.toggle('hidden',$('s_type').value!=='hon_phoi');}
 async function saveSac(){
   const rec={parish_id:PARISH.id,parishioner_id:editingPerson.id,type:$('s_type').value,
-    sac_date:$('s_date').value||null,place:val('s_place'),minister:val('s_minister'),
+    sac_date:$('s_date').value||null,place:val('s_place'),minister:val('s_minister'),godparent:val('s_godparent'),
     spouse_name:$('s_type').value==='hon_phoi'?val('s_spouse'):null,
     book_no:val('s_book'),entry_no:val('s_entry'),note:val('s_note')};
   const {error}=await sb.from('sacraments').insert(rec);
@@ -750,6 +761,11 @@ function applyAi(d){
   if(d.full_name)$('p_name').value=d.full_name;
   if(d.gender==='nam'||d.gender==='nu')$('p_gender').value=d.gender;
   if(d.birth_date&&/^\d{4}-\d{2}-\d{2}$/.test(d.birth_date))$('p_birth').value=d.birth_date;
+  if(d.birth_lunar)$('p_birthlunar').value=d.birth_lunar;
+  if(d.birth_place)$('p_birthplace').value=d.birth_place;
+  if(d.father_name)$('p_father').value=d.father_name;
+  if(d.mother_name)$('p_mother').value=d.mother_name;
+  if(d.feast_day)$('p_feast').value=d.feast_day;
   if(d.note)$('p_note').value=($('p_note').value?$('p_note').value+' · ':'')+'[AI] '+d.note;
   window._aiSacs=Array.isArray(d.sacraments)?d.sacraments.filter(s=>s&&s.type):[];
   const ns=window._aiSacs.length;

@@ -5,12 +5,12 @@
 //
 //  Cài đặt 1 lần:
 //   1) Đặt file này tại  api/scan.js  ở gốc repo (cùng chỗ index.html).
-//   2) Lấy khóa Gemini miễn phí tại  https://aistudio.google.com/apikey
+//   2) Lấy khóa Gemini tại  https://aistudio.google.com/apikey
 //   3) Vercel → Project → Settings → Environment Variables:
 //        GEMINI_API_KEY = <khóa vừa lấy>
-//        (tùy chọn) GEMINI_MODEL = gemini-3.6-flash
+//        (tùy chọn) GEMINI_MODEL = gemini-3.6-flash  (hoặc gemini-3.5-flash-lite nếu bị quá tải)
 //   4) Deploy lại.
-//  Gemini có gói miễn phí (giới hạn tần suất); vượt hạn mới tính phí.
+//  Khóa AIza (cũ) và AQ. (mới) đều gửi qua header x-goog-api-key (KHÔNG dùng Bearer).
 // ============================================================
 
 module.exports = async function handler(req, res) {
@@ -33,22 +33,28 @@ module.exports = async function handler(req, res) {
     const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
     const prompt =
-`Bạn đọc ảnh chụp một trang sổ bộ hoặc giấy chứng nhận của giáo xứ Công giáo Việt Nam (có thể viết tay hoặc đánh máy, có thể cũ hoặc mờ). Hãy trích xuất thông tin của MỘT giáo dân chính trong ảnh.
+`Bạn đọc ảnh chụp một trang SỔ RỬA TỘI (hoặc sổ bộ / giấy chứng nhận) của giáo xứ Công giáo Việt Nam, có thể viết tay, cũ hoặc mờ. Trích xuất thông tin của MỘT giáo dân chính trong ảnh, đúng theo các mục có trên sổ.
 
-Trả về một đối tượng JSON theo mẫu:
+Trả về một đối tượng JSON theo mẫu (đúng các khóa này):
 {
-  "saint_name": "tên thánh (vd Giuse, Maria) hoặc null",
-  "full_name": "họ và tên đầy đủ hoặc null",
+  "saint_name": "Tên thánh trong mục 'Tên' (vd Maria, Giuse) hoặc null",
+  "full_name": "Họ và tên trong mục 'Tên' (không gồm tên thánh) hoặc null",
   "gender": "nam | nu | null",
-  "birth_date": "YYYY-MM-DD; nếu chỉ có năm dùng YYYY-01-01; không rõ để null",
+  "birth_date": "mục 'Sinh': YYYY-MM-DD; chỉ có năm thì YYYY-01-01; không rõ null",
+  "birth_lunar": "mục 'Âm lịch' (vd '29/07 Đinh Dậu') hoặc null",
+  "birth_place": "mục 'Tại' (nơi sinh) hoặc null",
+  "father_name": "mục 'Cha' (kèm tên thánh) hoặc null",
+  "mother_name": "mục 'Mẹ' (kèm tên thánh) hoặc null",
+  "feast_day": "mục 'Ngày lễ bổn mạng' (vd '15.08') hoặc null",
   "sacraments": [
     {
       "type": "rua_toi | them_suc | thanh_the | hon_phoi | truyen_chuc | xuc_dau",
-      "sac_date": "YYYY-MM-DD hoặc null",
-      "place": "nơi lãnh nhận hoặc null",
-      "minister": "linh mục/thừa tác viên ban hoặc null",
-      "book_no": "số sổ hoặc null",
-      "entry_no": "số thứ tự hoặc null",
+      "sac_date": "ngày lãnh nhận (mục 'RỬA TỘI ngày'): YYYY-MM-DD hoặc null",
+      "place": "mục 'Tại nhà thờ' hoặc null",
+      "minister": "mục 'Do Linh mục' hoặc null",
+      "godparent": "mục 'Người đỡ đầu' hoặc null",
+      "book_no": "'Sổ Rửa tội số' (vd '93/2017') hoặc null",
+      "entry_no": "'Con thứ' (vd '01') hoặc null",
       "spouse_name": "chỉ cho hôn phối, hoặc null"
     }
   ],
@@ -56,13 +62,12 @@ Trả về một đối tượng JSON theo mẫu:
 }
 
 Quy tắc bắt buộc:
+- Với Sổ Rửa tội: luôn đưa 1 phần tử type "rua_toi" vào "sacraments".
 - Ô nào không đọc được thì để null. TUYỆT ĐỐI KHÔNG bịa hay đoán.
-- Nếu không thấy bí tích nào thì "sacraments": [].
 - Ngày tháng đưa về dạng số.`;
 
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
-    // Cả khóa cũ (AIza...) lẫn khóa mới (AQ....) đều gửi qua header x-goog-api-key
-    // trên endpoint gốc này. KHÔNG dùng Authorization: Bearer (sẽ bị hiểu là OAuth → 401).
+    // Khóa AIza (cũ) và AQ. (mới) đều gửi qua x-goog-api-key. KHÔNG dùng Authorization: Bearer.
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },

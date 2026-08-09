@@ -101,6 +101,11 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
 .pickrow{display:flex;gap:8px;align-items:center;margin-top:8px}
 .pickrow select,.pickrow input{flex:1}
 .mark .logo{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.codebox{display:flex;gap:8px;align-items:center;background:#faf6ec;border:1px dashed var(--accent);border-radius:9px;padding:10px 12px;margin:6px 0}
+.codebox .val{flex:1;font-weight:700;font-size:17px;color:var(--wine);word-break:break-all;letter-spacing:.5px}
+.codebox.small .val{font-size:13px;font-weight:600;color:var(--primary-2);letter-spacing:0}
+.copybtn{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:7px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;flex:0 0 auto}
+.mh{font-family:'Lora',serif;font-size:16px;margin:16px 0 2px;color:var(--primary)}
 </style>
 </head>
 <body>
@@ -145,6 +150,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
     <button class="close" onclick="closeCreateParish()">×</button>
     <h2 class="serif">Lập giáo xứ mới</h2>
     <p class="hint" style="margin-bottom:6px">Tạo giáo xứ và tài khoản Cha xứ đầu tiên.</p>
+    <div id="cpForm">
     <label>Tên giáo xứ *</label><input id="cp_name"/>
     <div class="grid2">
       <div><label>Mã xứ</label><input id="cp_code"/></div>
@@ -158,6 +164,19 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
       <button class="btn gold" onclick="doCreateParish()">Tạo giáo xứ</button>
     </div>
     <div id="cpMsg"></div>
+    </div><!-- /cpForm -->
+
+    <div id="cpResult" class="hidden">
+      <div class="msg ok">Đã tạo giáo xứ! Hãy lưu lại các thông tin dưới đây.</div>
+      <div class="mh">Mã mời cho Ban Chức Việc</div>
+      <p class="hint">Đưa mã này cho thư ký / GLV để họ vào app rồi Đăng ký bằng mã này.</p>
+      <div class="codebox"><span class="val" id="cp_res_invite">—</span><button class="copybtn" onclick="copyText(document.getElementById('cp_res_invite').textContent,this)">Chép</button></div>
+      <div class="mh">Link khai báo cho gia đình</div>
+      <p class="hint">Gửi cho các gia đình tự điền hộ khẩu (không cần tài khoản).</p>
+      <div class="codebox small"><span class="val" id="cp_res_link">—</span><button class="copybtn" onclick="copyText(document.getElementById('cp_res_link').textContent,this)">Chép</button></div>
+      <div class="modal-actions"><button class="btn" id="cp_continue">Vào giáo xứ</button></div>
+      <div class="hint" id="cp_continue_note">Xem lại mã mời bất cứ lúc nào trong app ở mục “Chia sẻ”.</div>
+    </div>
   </div>
 </div>
 
@@ -182,6 +201,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
     <button id="nav_hd" onclick="showTab('hd')">Hội đoàn</button>
     <button id="nav_sub" onclick="showTab('sub')">Đơn gửi về <span id="subBadge" class="badge hidden">0</span></button>
     <button id="nav_gh" onclick="showTab('gh')">Giáo họ</button>
+    <button id="nav_share" onclick="openShare()">Chia sẻ</button>
     <button id="nav_help" onclick="openGuide()">Hướng dẫn</button>
   </nav>
 
@@ -419,6 +439,20 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
   </div>
 </div>
 
+<!-- SHARE MODAL -->
+<div id="shareOverlay" class="overlay hidden">
+  <div class="modal" style="max-width:460px">
+    <button class="close" onclick="closeShare()">×</button>
+    <h2 class="serif">Chia sẻ &amp; Mời</h2>
+    <div class="mh">Mã mời cho Ban Chức Việc</div>
+    <p class="hint">Đưa mã này cho thư ký / GLV để họ vào app → Đăng ký bằng mã này (họ sẽ là Ban Chức Việc của giáo xứ).</p>
+    <div class="codebox"><span class="val" id="sh_invite">—</span><button class="copybtn" onclick="copyText(document.getElementById('sh_invite').textContent,this)">Chép</button></div>
+    <div class="mh">Link khai báo cho gia đình</div>
+    <p class="hint">Gửi link này để các gia đình tự điền hộ khẩu (không cần tài khoản). Đơn về sẽ nằm ở tab “Đơn gửi về”.</p>
+    <div class="codebox small"><span class="val" id="sh_formlink">—</span><button class="copybtn" onclick="copyText(document.getElementById('sh_formlink').textContent,this)">Chép</button></div>
+  </div>
+</div>
+
 <script>
 /* =========================================================
    CẤU HÌNH — điền 2 giá trị từ Supabase (Settings → API)
@@ -469,23 +503,44 @@ async function doJoin(){
   if(e2)return authMsg('Đã tạo tài khoản. Nếu cần xác nhận email, hãy mở email rồi đăng nhập.','ok');
   boot();
 }
-function openCreateParish(){if(!sb&&!initSb())return;$('parishOverlay').classList.remove('hidden');}
+function openCreateParish(){if(!sb&&!initSb())return;$('cpForm').classList.remove('hidden');$('cpResult').classList.add('hidden');$('cpMsg').innerHTML='';$('parishOverlay').classList.remove('hidden');}
 function closeCreateParish(){$('parishOverlay').classList.add('hidden');}
 async function doCreateParish(){
   const name=$('cp_name').value.trim();
   if(!name)return cpMsg('Nhập tên giáo xứ.','err');
   const {data,error}=await sb.rpc('create_parish',{p_name:name,p_code:$('cp_code').value.trim()||null,p_deanery:$('cp_deanery').value.trim()||null});
   if(error)return cpMsg(error.message,'err');
-  const invite=data.invite_code, email=$('cp_email').value.trim(), pass=$('cp_pass').value;
+  const invite=data.invite_code, token=data.submit_token, email=$('cp_email').value.trim(), pass=$('cp_pass').value;
   const {error:e1}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:$('cp_admin').value.trim(),invite_code:invite}}});
   if(e1)return cpMsg(e1.message,'err');
+  // hiện mã mời + link cho Cha xứ
+  $('cp_res_invite').textContent=invite;
+  $('cp_res_link').textContent=formLink(token);
+  $('cpForm').classList.add('hidden');
+  $('cpResult').classList.remove('hidden');
   const {error:e2}=await sb.auth.signInWithPassword({email,password:pass});
-  if(e2)return cpMsg('Đã tạo giáo xứ. Nếu cần xác nhận email thì mở email rồi đăng nhập.','ok');
-  closeCreateParish();boot();
+  if(e2){
+    $('cp_continue').textContent='Đã hiểu';
+    $('cp_continue_note').textContent='Cần mở email xác nhận trước khi vào. Hãy lưu lại mã mời ở trên rồi đăng nhập.';
+    $('cp_continue').onclick=()=>location.reload();
+  } else {
+    $('cp_continue').onclick=()=>{closeCreateParish();boot();};
+  }
 }
 function cpMsg(t,k){$('cpMsg').innerHTML=`<div class="msg ${k}">${esc(t)}</div>`;}
 async function doLogout(){await sb.auth.signOut();location.reload();}
 function openGuide(){window.open('giaoxu_cam_nang.html','_blank');}
+function formLink(token){return new URL('form.html',location.href).href+'?t='+token;}
+function copyText(t,btn){
+  if(navigator.clipboard&&t){navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='Đã chép';setTimeout(()=>btn.textContent=o,1200);}).catch(()=>{});}
+}
+function openShare(){
+  if(!PARISH)return;
+  $('sh_invite').textContent=PARISH.invite_code||'—';
+  $('sh_formlink').textContent=PARISH.submit_token?formLink(PARISH.submit_token):'—';
+  $('shareOverlay').classList.remove('hidden');
+}
+function closeShare(){$('shareOverlay').classList.add('hidden');}
 
 /* ---------- BOOT ---------- */
 async function boot(){

@@ -61,13 +61,11 @@ Quy tắc bắt buộc:
 - Ngày tháng đưa về dạng số.`;
 
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
-    // Khóa kiểu mới (AQ....) dùng Authorization: Bearer; khóa cũ (AIza...) dùng x-goog-api-key.
-    const authHeaders = key.startsWith('AQ.')
-      ? { 'Authorization': 'Bearer ' + key }
-      : { 'x-goog-api-key': key };
+    // Cả khóa cũ (AIza...) lẫn khóa mới (AQ....) đều gửi qua header x-goog-api-key
+    // trên endpoint gốc này. KHÔNG dùng Authorization: Bearer (sẽ bị hiểu là OAuth → 401).
     const r = await fetch(url, {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         contents: [{
           parts: [

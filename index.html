@@ -286,6 +286,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
       <div><label>Cha</label><input id="p_father" placeholder="Tên thánh + họ tên"/></div>
       <div><label>Mẹ</label><input id="p_mother" placeholder="Tên thánh + họ tên"/></div>
       <div><label>Ngày lễ bổn mạng</label><input id="p_feast" placeholder="VD: 15.08"/></div>
+      <div><label>Giáo xứ (theo giấy tờ)</label><input id="p_origin" placeholder="Giáo xứ gốc ghi trên giấy"/></div>
       <div><label>Giáo họ</label><select id="p_giaoho"></select></div>
       <div><label>Hộ gia đình</label><select id="p_house"></select></div>
       <div><label>Quan hệ với chủ hộ</label><input id="p_relation" placeholder="Chủ hộ / Vợ / Con…"/></div>
@@ -327,7 +328,8 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
       <div><label>Nơi lãnh nhận</label><input id="s_place"/></div>
       <div><label>Linh mục / thừa tác viên</label><input id="s_minister"/></div>
       <div><label>Người đỡ đầu</label><input id="s_godparent"/></div>
-      <div id="spouseWrap" class="hidden"><label>Người phối ngẫu</label><input id="s_spouse"/></div>
+      <div id="spouseWrap" class="hidden"><label>Người phối ngẫu (tên)</label><input id="s_spouse"/></div>
+      <div id="spouseIdWrap" class="hidden"><label>… hoặc chọn từ giáo dân</label><select id="s_spouse_id"></select></div>
       <div><label>Số sổ (VD Sổ Rửa tội số)</label><input id="s_book"/></div>
       <div><label>Số thứ tự (Con thứ)</label><input id="s_entry"/></div>
     </div>
@@ -634,6 +636,7 @@ async function openPerson(id){
   $('p_gender').value=p.gender||'';$('p_birth').value=p.birth_date||'';
   $('p_birthlunar').value=p.birth_lunar||'';$('p_birthplace').value=p.birth_place||'';
   $('p_father').value=p.father_name||'';$('p_mother').value=p.mother_name||'';$('p_feast').value=p.feast_day||'';
+  $('p_origin').value=p.origin_parish||'';
   $('p_giaoho').value=p.giao_ho_id||'';$('p_house').value=p.household_id||'';
   $('p_relation').value=p.relation_head||'';$('p_phone').value=p.phone||'';
   $('p_note').value=p.note||'';$('p_dead').checked=!!p.is_deceased;$('p_deathdate').value=p.death_date||'';toggleDeath();
@@ -656,7 +659,7 @@ async function savePerson(){
     parish_id:PARISH.id, saint_name:val('p_saint'), full_name:name,
     gender:$('p_gender').value||null, birth_date:$('p_birth').value||null,
     birth_lunar:val('p_birthlunar'), birth_place:val('p_birthplace'),
-    father_name:val('p_father'), mother_name:val('p_mother'), feast_day:val('p_feast'),
+    father_name:val('p_father'), mother_name:val('p_mother'), feast_day:val('p_feast'), origin_parish:val('p_origin'),
     giao_ho_id:$('p_giaoho').value||null, household_id:$('p_house').value||null,
     relation_head:val('p_relation'), phone:val('p_phone'), note:val('p_note'),
     is_deceased:$('p_dead').checked, death_date:$('p_deathdate').value||null,
@@ -700,15 +703,17 @@ async function renderSacs(){
 function openSac(){
   if(!editingPerson)return pmsg('Hãy lưu giáo dân trước.','err');
   ['s_date','s_place','s_minister','s_godparent','s_spouse','s_book','s_entry','s_note'].forEach(i=>$(i).value='');
+  $('s_spouse_id').innerHTML='<option value="">— chưa chọn —</option>'+PEOPLE.filter(p=>!editingPerson||p.id!==editingPerson.id).map(p=>`<option value="${p.id}">${esc((p.saint_name?p.saint_name+' ':'')+p.full_name)}</option>`).join('');
   $('s_type').value='rua_toi';toggleSpouse();$('sacMsg').innerHTML='';
   $('sacOverlay').classList.remove('hidden');
 }
 function closeSac(){$('sacOverlay').classList.add('hidden');}
-function toggleSpouse(){$('spouseWrap').classList.toggle('hidden',$('s_type').value!=='hon_phoi');}
+function toggleSpouse(){const h=$('s_type').value!=='hon_phoi';$('spouseWrap').classList.toggle('hidden',h);$('spouseIdWrap').classList.toggle('hidden',h);}
 async function saveSac(){
   const rec={parish_id:PARISH.id,parishioner_id:editingPerson.id,type:$('s_type').value,
     sac_date:$('s_date').value||null,place:val('s_place'),minister:val('s_minister'),godparent:val('s_godparent'),
     spouse_name:$('s_type').value==='hon_phoi'?val('s_spouse'):null,
+    spouse_id:$('s_type').value==='hon_phoi'?($('s_spouse_id').value||null):null,
     book_no:val('s_book'),entry_no:val('s_entry'),note:val('s_note')};
   const {error}=await sb.from('sacraments').insert(rec);
   if(error){$('sacMsg').innerHTML=`<div class="msg err">${esc(error.message)}</div>`;return;}
@@ -755,21 +760,42 @@ async function onAiScan(ev){
     applyAi(d);
   }catch(e){$('ai_status').textContent='Không quét được: '+e.message+'. Có thể chức năng AI chưa được bật (cần deploy api/scan.js và đặt khóa trên Vercel).';}
 }
+function aiDone(ns){
+  $('ai_status').innerHTML='<b style="color:var(--wine)">AI đã điền — vui lòng kiểm tra lại từng ô.</b>'+(ns?` Thấy ${ns} bí tích, sẽ tự thêm sau khi bạn bấm “Lưu giáo dân”.`:'');
+}
+function fillPersonFields(o){
+  if(o.saint_name)$('p_saint').value=o.saint_name;
+  if(o.full_name)$('p_name').value=o.full_name;
+  if(o.gender==='nam'||o.gender==='nu')$('p_gender').value=o.gender;
+  if(o.birth_date&&/^\d{4}-\d{2}-\d{2}$/.test(o.birth_date))$('p_birth').value=o.birth_date;
+  if(o.birth_lunar)$('p_birthlunar').value=o.birth_lunar;
+  if(o.birth_place)$('p_birthplace').value=o.birth_place;
+  if(o.father_name)$('p_father').value=o.father_name;
+  if(o.mother_name)$('p_mother').value=o.mother_name;
+  if(o.feast_day)$('p_feast').value=o.feast_day;
+  if(o.origin_parish)$('p_origin').value=o.origin_parish;
+}
 function applyAi(d){
   if(!d||typeof d!=='object'||d.error){$('ai_status').textContent='AI chưa đọc được: '+((d&&(d.error||d.note))||'không rõ');return;}
-  if(d.saint_name)$('p_saint').value=d.saint_name;
-  if(d.full_name)$('p_name').value=d.full_name;
-  if(d.gender==='nam'||d.gender==='nu')$('p_gender').value=d.gender;
-  if(d.birth_date&&/^\d{4}-\d{2}-\d{2}$/.test(d.birth_date))$('p_birth').value=d.birth_date;
-  if(d.birth_lunar)$('p_birthlunar').value=d.birth_lunar;
-  if(d.birth_place)$('p_birthplace').value=d.birth_place;
-  if(d.father_name)$('p_father').value=d.father_name;
-  if(d.mother_name)$('p_mother').value=d.mother_name;
-  if(d.feast_day)$('p_feast').value=d.feast_day;
+  if(Array.isArray(d.parties)&&d.parties.length){
+    window._aiMarriage=d;
+    const btns=d.parties.map((p,i)=>`<button class="btn ghost sm" style="margin:4px 4px 0 0" onclick="fillFromParty(${i})">${p.side==='nu'?'Bên nữ':(p.side==='nam'?'Bên nam':'Người '+(i+1))}: ${esc(((p.saint_name?p.saint_name+' ':'')+(p.full_name||'')).trim()||'?')}</button>`).join(' ');
+    $('ai_status').innerHTML='<b>Đây là chứng nhận hôn phối.</b> Nhập cho ai?<br>'+btns+'<div class="hint">Nhập một bên trước; bên còn lại thêm sau bằng một hồ sơ giáo dân khác.</div>';
+    return;
+  }
+  fillPersonFields(d);
   if(d.note)$('p_note').value=($('p_note').value?$('p_note').value+' · ':'')+'[AI] '+d.note;
   window._aiSacs=Array.isArray(d.sacraments)?d.sacraments.filter(s=>s&&s.type):[];
-  const ns=window._aiSacs.length;
-  $('ai_status').innerHTML='<b style="color:var(--wine)">AI đã điền — vui lòng kiểm tra lại từng ô.</b>'+(ns?` Thấy ${ns} bí tích, sẽ tự thêm sau khi bạn bấm “Lưu giáo dân”.`:'');
+  aiDone(window._aiSacs.length);
+}
+function fillFromParty(i){
+  const d=window._aiMarriage;if(!d)return;
+  const p=d.parties[i]||{}, other=d.parties[1-i]||{};
+  fillPersonFields(p);
+  const sacs=Array.isArray(p.sacraments)?p.sacraments.filter(s=>s&&s.type):[];
+  sacs.push({type:'hon_phoi',book_no:d.marriage_book_no||null,spouse_name:other.full_name||null});
+  window._aiSacs=sacs;
+  $('ai_status').innerHTML='<b style="color:var(--wine)">Đã điền '+(p.side==='nu'?'Bên nữ':'Bên nam')+' — kiểm tra lại.</b> Sẽ thêm '+sacs.length+' bí tích (rửa tội, thêm sức, hôn phối) sau khi Lưu. Phối ngẫu: '+esc(other.full_name||'—')+'.';
 }
 
 /* ---------- HOUSEHOLDS ---------- */

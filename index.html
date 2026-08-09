@@ -106,6 +106,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
 .codebox.small .val{font-size:13px;font-weight:600;color:var(--primary-2);letter-spacing:0}
 .copybtn{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:7px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;flex:0 0 auto}
 .mh{font-family:'Lora',serif;font-size:16px;margin:16px 0 2px;color:var(--primary)}
+.ai-scan{background:#faf6ec;border:1px dashed var(--accent);border-radius:9px;padding:11px 12px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -266,6 +267,11 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
   <div class="modal">
     <button class="close" onclick="closePerson()">×</button>
     <h2 class="serif" id="personTitle">Thêm giáo dân</h2>
+    <div class="ai-scan">
+      <input id="ai_file" type="file" accept="image/*" capture="environment" style="display:none" onchange="onAiScan(event)"/>
+      <button class="btn gold sm" onclick="document.getElementById('ai_file').click()">Quét ảnh bằng AI</button>
+      <div class="hint" id="ai_status" style="margin-top:6px">Chụp/chọn ảnh sổ bộ hoặc giấy tờ — AI sẽ đọc và điền giúp. Luôn kiểm tra lại trước khi lưu.</div>
+    </div>
     <div class="avataredit">
       <img id="p_avatar_img" class="avatar ph" src="" alt=""/>
       <div><input id="p_avatar_file" type="file" accept="image/*" onchange="onAvatarPick(event)"/><div class="hint" id="p_avatar_hint">Ảnh sẽ được nén trước khi lưu.</div></div>
@@ -626,6 +632,8 @@ async function openPerson(id){
   const img=$('p_avatar_img');if(p.avatar_url){img.src=p.avatar_url;img.classList.remove('ph');}else{img.removeAttribute('src');img.classList.add('ph');}
   $('p_avatar_file').value='';
   await renderSacs();
+  window._aiSacs=[];
+  const aist=$('ai_status');if(aist)aist.textContent='Chụp/chọn ảnh sổ bộ hoặc giấy tờ — AI sẽ đọc và điền giúp. Luôn kiểm tra lại trước khi lưu.';
   $('personOverlay').classList.remove('hidden');
 }
 function closePerson(){$('personOverlay').classList.add('hidden');$('personMsg').innerHTML='';}
@@ -650,6 +658,16 @@ async function savePerson(){
   if(res.error)return pmsg(res.error.message,'err');
   window._newAvatarBlob=null;
   editingPerson=res.data;
+  if(window._aiSacs&&window._aiSacs.length&&editingPerson){
+    const ok=['rua_toi','them_suc','thanh_the','hon_phoi','truyen_chuc','xuc_dau'];
+    const rows=window._aiSacs.filter(s=>s&&ok.includes(s.type)).map(s=>({
+      parish_id:PARISH.id,parishioner_id:editingPerson.id,type:s.type,
+      sac_date:(s.sac_date&&/^\d{4}-\d{2}-\d{2}$/.test(s.sac_date))?s.sac_date:null,
+      place:s.place||null,minister:s.minister||null,book_no:s.book_no||null,entry_no:s.entry_no||null,
+      spouse_name:s.type==='hon_phoi'?(s.spouse_name||null):null}));
+    if(rows.length)await sb.from('sacraments').insert(rows);
+    window._aiSacs=[];
+  }
   $('personTitle').textContent='Sửa giáo dân';$('sacHint').textContent='';
   await loadAll();await renderSacs();
   pmsg('Đã lưu.','ok');
@@ -710,6 +728,32 @@ async function uploadAvatar(blob){
   const {error}=await sb.storage.from('media').upload(path,blob,{contentType:'image/webp',upsert:true});
   if(error)throw error;
   return sb.storage.from('media').getPublicUrl(path).data.publicUrl;
+}
+
+/* ---------- QUÉT AI ---------- */
+function toB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('đọc ảnh lỗi'));r.readAsDataURL(blob);});}
+async function onAiScan(ev){
+  const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  $('ai_status').textContent='Đang đọc ảnh… (khoảng 5–15 giây)';
+  try{
+    const blob=await compress(f);
+    const b64=await toB64(blob);
+    const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,media_type:'image/webp'})});
+    if(!r.ok){let t='';try{t=(await r.json()).error||'';}catch(e){}throw new Error('máy chủ AI lỗi '+r.status+(t?' — '+t:''));}
+    const d=await r.json();
+    applyAi(d);
+  }catch(e){$('ai_status').textContent='Không quét được: '+e.message+'. Có thể chức năng AI chưa được bật (cần deploy api/scan.js và đặt khóa trên Vercel).';}
+}
+function applyAi(d){
+  if(!d||typeof d!=='object'||d.error){$('ai_status').textContent='AI chưa đọc được: '+((d&&(d.error||d.note))||'không rõ');return;}
+  if(d.saint_name)$('p_saint').value=d.saint_name;
+  if(d.full_name)$('p_name').value=d.full_name;
+  if(d.gender==='nam'||d.gender==='nu')$('p_gender').value=d.gender;
+  if(d.birth_date&&/^\d{4}-\d{2}-\d{2}$/.test(d.birth_date))$('p_birth').value=d.birth_date;
+  if(d.note)$('p_note').value=($('p_note').value?$('p_note').value+' · ':'')+'[AI] '+d.note;
+  window._aiSacs=Array.isArray(d.sacraments)?d.sacraments.filter(s=>s&&s.type):[];
+  const ns=window._aiSacs.length;
+  $('ai_status').innerHTML='<b style="color:var(--wine)">AI đã điền — vui lòng kiểm tra lại từng ô.</b>'+(ns?` Thấy ${ns} bí tích, sẽ tự thêm sau khi bạn bấm “Lưu giáo dân”.`:'');
 }
 
 /* ---------- HOUSEHOLDS ---------- */

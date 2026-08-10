@@ -36,6 +36,7 @@ td.c{text-align:center;font-weight:600}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 9px;border-radius:20px}
 .tag.now{background:#eaf2ec;color:var(--ok)}
 .tag.soon{background:#f2ead7;color:var(--accent)}
+.role{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:4px 16px 8px;margin:16px 0}
 .foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:34px;padding-top:14px}
 @media print{body{background:#fff}.doc{box-shadow:none;max-width:none}}
 </style>
@@ -51,106 +52,99 @@ td.c{text-align:center;font-weight:600}
   </div>
   <div class="body">
 
-  <p class="lead">Tài liệu dành cho Cha xứ và Ban Chức Việc: phân quyền, trình tự khởi động, hướng dẫn từng chức năng, và cách dùng AI quét sổ.</p>
+  <p class="lead">Cẩm nang này sắp xếp theo <b>nhiệm vụ từng người</b>: Cha xứ quản trị chung, Ban Chức Việc lo giáo họ – giáo dân – hộ gia đình, Giáo lý viên / Huynh trưởng lo lớp giáo lý.</p>
 
-  <!-- 1. PHÂN QUYỀN -->
-  <h2>1. Phân cấp &amp; phân quyền</h2>
-  <h3>Mỗi giáo xứ là một khoang dữ liệu riêng</h3>
-  <p>Hệ thống dùng chung một nền tảng, nhưng dữ liệu của mỗi giáo xứ (hay giáo họ biệt lập) được <b>cô lập hoàn toàn</b>: người của xứ này không thấy dữ liệu của xứ khác. Đây là ranh giới bảo mật chính, thực thi ở tầng cơ sở dữ liệu.</p>
-
-  <h3>Hai vai trò</h3>
+  <!-- 1. PHÂN CÔNG -->
+  <h2>1. Ai làm gì</h2>
   <table>
-    <tr><th>Vai trò</th><th>Là ai</th><th>Cách trở thành</th></tr>
-    <tr><td><b>Cha xứ</b> (Quản trị)</td><td>Người phụ trách cao nhất của giáo xứ trong hệ thống.</td><td>Người <b>đầu tiên</b> đăng ký bằng mã mời của xứ, hoặc người lập giáo xứ mới.</td></tr>
-    <tr><td><b>Ban Chức Việc / GLV</b></td><td>Thư ký, trưởng giáo họ, giáo lý viên… nhập và tra cứu dữ liệu.</td><td>Đăng ký <b>sau</b> bằng cùng mã mời của giáo xứ.</td></tr>
+    <tr><th>Người phụ trách</th><th>Nhiệm vụ chính</th></tr>
+    <tr><td><b>Cha xứ</b><br>(Quản trị)</td><td>Lập giáo xứ, cấp tài khoản (chia mã mời), giám sát toàn bộ, chạy <b>Chuyển năm</b> giáo lý.</td></tr>
+    <tr><td><b>Ban Chức Việc</b></td><td><b>Giáo họ · Giáo dân · Hộ gia đình · Bí tích · Hội đoàn · Đơn gia đình gửi về · Quét ảnh AI</b> (Sổ Rửa tội, giấy Hôn phối).</td></tr>
+    <tr><td><b>Giáo lý viên /<br>Huynh trưởng</b></td><td><b>Lớp giáo lý</b>: cấp lớp, lập lớp theo niên khóa, ghi danh học sinh, chấm kết quả, nhập danh sách từ Word.</td></tr>
   </table>
-  <table>
-    <tr><th>Chức năng</th><th style="text-align:center">Cha xứ</th><th style="text-align:center">Ban Chức Việc</th></tr>
-    <tr><td>Xem &amp; nhập/sửa giáo dân, hộ, bí tích</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
-    <tr><td>Quản lý giáo họ, giáo lý, hội đoàn; duyệt Đơn gửi về</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
-    <tr><td>Quét ảnh bằng AI (Sổ Rửa tội, Hôn phối)</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
-    <tr><td>Chạy <b>Chuyển năm</b> giáo lý · quản lý tài khoản</td><td class="c yes">✓</td><td class="c no">✗</td></tr>
-    <tr><td>Thấy dữ liệu giáo xứ khác</td><td class="c no">✗</td><td class="c no">✗</td></tr>
-  </table>
-  <div class="warn"><b>Cần biết rõ:</b> hiện Ban Chức Việc sửa được <b>mọi</b> dữ liệu trong xứ, <b>chưa</b> giới hạn theo từng giáo họ. Muốn siết chặt (mỗi GLV chỉ quản giáo họ mình) là phần <span class="tag soon">sắp làm</span>. Trong thời gian chờ, trao mã mời cẩn trọng.</div>
+  <div class="warn"><b>Xin lưu ý:</b> đây là <b>phân công công việc</b>, không phải giới hạn kỹ thuật. Hiện <b>mọi tài khoản</b> Ban Chức Việc / GLV về mặt hệ thống <b>đều sửa được toàn bộ dữ liệu trong xứ</b> — nên phân công rõ ràng và thống nhất với nhau. Việc khóa quyền chặt theo từng nhiệm vụ (mỗi người chỉ được đụng phần của mình) là phần <span class="tag soon">sắp làm</span>.</div>
 
-  <h3>Cấp tài khoản &amp; đổi vai trò</h3>
-  <ul>
-    <li>Cha xứ đưa <b>mã mời</b> cho người cần cấp; họ vào app → <span class="kbd">Đăng ký</span> bằng mã đó → thành Ban Chức Việc.</li>
-    <li>Xem lại mã mời bất cứ lúc nào ở nút <span class="kbd">Chia sẻ</span> trên thanh menu.</li>
-    <li>Đổi vai trò: hiện sửa trực tiếp trong Supabase → bảng <span class="kbd">app_users</span> → cột <span class="kbd">role</span> = <span class="kbd">admin</span>. Màn quản lý người dùng là <span class="tag soon">sắp làm</span>.</li>
-  </ul>
+  <h3>Dữ liệu mỗi giáo xứ là riêng biệt</h3>
+  <p>Các giáo xứ dùng chung một nền tảng nhưng dữ liệu <b>cô lập hoàn toàn</b>: không xứ nào thấy dữ liệu xứ khác.</p>
 
-  <!-- 2. KHỞI ĐỘNG -->
-  <h2>2. Trình tự khởi động một giáo xứ</h2>
+  <!-- 2. TÀI KHOẢN -->
+  <h2>2. Đăng nhập &amp; cấp tài khoản</h2>
   <ol>
-    <li>Lập giáo xứ &amp; tài khoản Cha xứ (màn đăng nhập → <span class="kbd">+ Lập giáo xứ mới</span>). Lưu lại mã mời &amp; link khai báo hiện ra.</li>
-    <li>Tạo danh mục <b>Giáo họ</b>.</li>
-    <li>Rà soát <b>Cấp lớp</b> giáo lý (có sẵn 5 cấp mẫu, sửa cho khớp xứ).</li>
-    <li>Nhập <b>Hộ</b>, rồi <b>Giáo dân</b> — hoặc dùng <b>Quét ảnh bằng AI</b> để nhập nhanh từ sổ.</li>
-    <li>Lập <b>lớp giáo lý</b>, <b>hội đoàn</b>; chia <b>link khai báo</b> cho gia đình.</li>
+    <li><b>Cha xứ</b> lập giáo xứ ở màn đăng nhập → <span class="kbd">+ Lập giáo xứ mới</span>. Hệ thống hiện <b>mã mời</b> và <b>link khai báo</b> — lưu lại.</li>
+    <li>Xem lại mã mời / link bất cứ lúc nào ở nút <span class="kbd">Chia sẻ</span> trên menu.</li>
+    <li><b>Ban Chức Việc, GLV, Huynh trưởng</b> vào app → <span class="kbd">Đăng ký</span> bằng <b>mã mời của xứ</b> → có tài khoản để làm việc.</li>
   </ol>
+  <div class="note">Đổi vai trò lên Cha xứ (quản trị): tạm thời sửa trong Supabase → bảng <span class="kbd">app_users</span> → cột <span class="kbd">role</span> = <span class="kbd">admin</span>. Màn quản lý người dùng là <span class="tag soon">sắp làm</span>.</div>
 
-  <!-- 3. CHỨC NĂNG -->
-  <h2>3. Hướng dẫn từng chức năng</h2>
+  <!-- 3. BAN CHỨC VIỆC -->
+  <h2>3. Ban Chức Việc — Giáo họ · Giáo dân · Hộ · Bí tích</h2>
+
+  <div class="role">
+  <h3>Giáo họ / Giáo khu</h3>
+  <p>Tab <span class="kbd">Giáo họ</span>: thêm/xóa các giáo họ. Xóa thì giáo dân và hộ đang thuộc chuyển về “chưa phân”, không bị mất.</p>
+
+  <h3>Hộ gia đình</h3>
+  <p>Tab <span class="kbd">Hộ gia đình</span> → <span class="kbd">+ Thêm hộ</span>: mã hộ, giáo họ, địa chỉ. Mở một hộ để xem thành viên. Gắn người vào hộ làm trong hồ sơ từng giáo dân.</p>
 
   <h3>Giáo dân &amp; Bí tích</h3>
   <p>Tab <span class="kbd">Giáo dân</span> → <span class="kbd">+ Thêm</span>. Các mục theo đúng sổ mục vụ:</p>
   <ul>
-    <li>Tên thánh, họ tên, giới tính, <b>ngày sinh</b> (dương) và <b>ngày sinh âm lịch</b>, <b>nơi sinh</b>.</li>
-    <li><b>Cha</b>, <b>Mẹ</b>, <b>Ngày lễ bổn mạng</b>, <b>Giáo xứ (theo giấy tờ)</b>, giáo họ, hộ, quan hệ với chủ hộ, ảnh.</li>
+    <li>Tên thánh, họ tên, giới tính, <b>ngày sinh</b> (dương) và <b>âm lịch</b>, <b>nơi sinh</b>, <b>Cha</b>, <b>Mẹ</b>, <b>Ngày lễ bổn mạng</b>, <b>Giáo xứ (theo giấy tờ)</b>, giáo họ, hộ, ảnh.</li>
     <li>Đánh dấu <b>Đã qua đời</b> khi cần — hồ sơ vẫn giữ, chỉ hiện nhãn riêng.</li>
-    <li>Mục <b>Bí tích</b>: Rửa tội, Thêm sức, Thánh Thể, Hôn phối, Truyền chức, Xức dầu — ghi ngày, nơi, linh mục ban, <b>người đỡ đầu</b>, <b>số sổ</b> (VD Sổ Rửa tội số) và <b>số thứ tự</b> (Con thứ). Riêng Hôn phối có tên người phối ngẫu và ô <b>chọn người phối ngẫu từ giáo dân</b> để liên kết.</li>
+    <li>Mục <b>Bí tích</b>: Rửa tội, Thêm sức, Thánh Thể, Hôn phối, Truyền chức, Xức dầu — ghi ngày, nơi, linh mục ban, <b>người đỡ đầu</b>, <b>số sổ</b> và <b>số thứ tự (con thứ)</b>. Hôn phối có ô chọn <b>người phối ngẫu</b> để liên kết.</li>
   </ul>
 
   <h3>Quét ảnh bằng AI <span class="tag now">mới</span></h3>
-  <p>Chụp/chọn ảnh sổ giấy, AI đọc và <b>điền sẵn</b> để người kiểm tra rồi lưu (không tự lưu thẳng). Hai kiểu:</p>
   <ul>
-    <li><b>Sổ Rửa tội (một người):</b> trong màn <span class="kbd">+ Thêm</span> giáo dân, bấm <span class="kbd">Quét ảnh bằng AI</span> → AI điền tên thánh, họ tên, ngày sinh (kể cả âm lịch), nơi sinh, cha, mẹ, lễ bổn mạng, và bí tích Rửa tội (nơi, linh mục, người đỡ đầu, sổ số, con thứ).</li>
-    <li><b>Chứng nhận Hôn phối (hai người) — một lần bấm:</b> tab <span class="kbd">Giáo dân</span> → <span class="kbd">Quét giấy hôn phối</span> → chọn ảnh → AI đọc <b>cả Bên nam và Bên nữ</b>. Bấm <span class="kbd">Lưu tất cả</span> sẽ tạo 2 giáo dân, <b>tạo hoặc liên kết cha–mẹ mỗi bên</b>, thêm rửa tội + thêm sức cho từng người, và <b>liên kết vợ–chồng</b> (kèm Sổ Hôn phối số).</li>
+    <li><b>Sổ Rửa tội (một người):</b> trong màn <span class="kbd">+ Thêm</span> giáo dân → <span class="kbd">Quét ảnh bằng AI</span> → AI điền sẵn thông tin + bí tích Rửa tội để kiểm tra rồi lưu.</li>
+    <li><b>Giấy Hôn phối (hai người, một lần bấm):</b> tab <span class="kbd">Giáo dân</span> → <span class="kbd">Quét giấy hôn phối</span> → chọn ảnh → <span class="kbd">Lưu tất cả</span>: tạo 2 giáo dân, tạo/liên kết cha–mẹ mỗi bên, thêm rửa tội + thêm sức, và liên kết vợ–chồng.</li>
   </ul>
-  <div class="tip"><b>Luôn kiểm tra lại.</b> Chữ viết tay cũ AI có thể đọc sai — soát tên (nhất là tên cha/mẹ) ở bảng xem trước trước khi lưu, và đối chiếu sổ giấy. Giấy đánh máy/in thì chính xác cao hơn.</div>
-  <div class="note"><b>Điều kiện dùng AI:</b> cần bật khóa Gemini trên Vercel (biến môi trường <span class="kbd">GEMINI_API_KEY</span>). Mỗi lần quét tốn một ít tín dụng API; Gemini có gói miễn phí cho dùng nhẹ.</div>
+  <div class="tip"><b>Luôn kiểm tra lại</b> — chữ viết tay cũ AI có thể đọc sai; soát tên (nhất là cha/mẹ) ở bảng xem trước trước khi lưu và đối chiếu sổ giấy.</div>
 
-  <h3>Hộ gia đình &amp; Giáo họ</h3>
-  <ul>
-    <li>Tab <span class="kbd">Hộ gia đình</span>: mã hộ, giáo họ, địa chỉ; mở một hộ để xem thành viên. Gắn người vào hộ làm trong hồ sơ từng giáo dân.</li>
-    <li>Tab <span class="kbd">Giáo họ</span>: thêm/xóa giáo họ. Xóa thì giáo dân/hộ đang thuộc chuyển về “chưa phân”, không mất.</li>
-  </ul>
-
-  <h3>Giáo lý &amp; Chuyển năm tự động</h3>
-  <ul>
-    <li><b>Cấp lớp</b>: thang bậc từ thấp lên cao (dùng để chuyển năm). <b>Lớp</b>: thuộc một cấp và một <b>niên khóa</b>.</li>
-    <li>Mở lớp → thêm <b>GLV</b>, <b>ghi danh</b> học sinh, chấm kết quả (Đang học / Đạt / Chưa đạt).</li>
-    <li><b>Chuyển năm</b> (chỉ Cha xứ): chọn năm cũ → nhập năm mới; học sinh <b>Đạt</b> lên cấp kế tiếp; cấp cao nhất = hoàn thành chương trình. Nên tạo trước các lớp năm mới.</li>
-    <li><b>Nhập danh sách từ Word</b> <span class="tag now">mới</span>: nút <span class="kbd">Nhập DS Word</span> → nhập niên khóa → chọn file <b>.docx</b> → AI đọc và xếp thành các lớp + học sinh → kiểm tra bảng xem trước (sửa tên lớp, chọn cấp) → <span class="kbd">Lưu tất cả</span>: tạo lớp, tạo/khớp hồ sơ học sinh, và ghi danh vào lớp.</li>
-  </ul>
-  <div class="tip"><b>Mẹo nhập Word:</b> chỉ hỗ trợ <b>.docx</b> (file .doc cũ hãy mở Word → Save As .docx). Danh sách trình bày <b>dạng bảng</b> (STT · Tên thánh · Họ và tên · Ngày sinh) sẽ đọc chuẩn nhất. Luôn soát bảng xem trước; học sinh trùng tên với người đã có sẽ được nối, không tạo trùng.</div>
+  <h3>Đơn gia đình gửi về</h3>
+  <p>Chia <b>link khai báo</b> (nút <span class="kbd">Chia sẻ</span>) cho gia đình — họ điền không cần tài khoản. Đơn về nằm ở tab <span class="kbd">Đơn gửi về</span>; bấm <span class="kbd">Đưa vào giáo xứ</span> để tạo hộ + giáo dân, hoặc từ chối.</p>
 
   <h3>Hội đoàn</h3>
-  <p>Tab <span class="kbd">Hội đoàn</span> (Legio Mariae, Gia Trưởng, Hiền Mẫu…): thêm thành viên từ giáo dân, gán vai trò (Ban quản trị / Hội viên chính thức / Hội viên tán trợ) và ngày gia nhập.</p>
+  <p>Tab <span class="kbd">Hội đoàn</span> (Legio Mariae, Gia Trưởng, Hiền Mẫu…): thêm thành viên từ giáo dân, gán vai trò (Ban quản trị / Hội viên chính thức / tán trợ) và ngày gia nhập.</p>
+  </div>
 
-  <h3>Đơn gửi về (gia đình tự khai)</h3>
+  <!-- 4. GIÁO LÝ VIÊN -->
+  <h2>4. Giáo lý viên / Huynh trưởng — Lớp giáo lý</h2>
+  <div class="role">
   <ul>
-    <li>Chia <b>link khai báo</b> (ở nút <span class="kbd">Chia sẻ</span>) cho các gia đình — họ điền không cần tài khoản.</li>
-    <li>Đơn về nằm ở tab <span class="kbd">Đơn gửi về</span>; Ban Chức Việc bấm <span class="kbd">Đưa vào giáo xứ</span> để tạo hộ + giáo dân, hoặc từ chối.</li>
+    <li><b>Cấp lớp</b> (thang bậc Khai Tâm → Rước Lễ → Thêm Sức → Bao Đồng → Vào Đời): thiết lập một lần ở <span class="kbd">Cấp lớp</span>, sửa cho khớp chương trình của xứ.</li>
+    <li><b>Lập lớp</b>: <span class="kbd">+ Lớp</span> — mỗi lớp thuộc một cấp và một <b>niên khóa</b>. Chọn niên khóa ở ô trên cùng để xem lớp của năm đó.</li>
+    <li><b>GLV phụ trách</b>: mở lớp → thêm giáo lý viên (chọn từ giáo dân).</li>
+    <li><b>Ghi danh &amp; kết quả</b>: mở lớp → <span class="kbd">+ Ghi danh</span> chọn học sinh; cuối năm chấm <b>Đang học / Đạt / Chưa đạt</b>.</li>
+    <li><b>Nhập danh sách từ Word</b> <span class="tag now">mới</span>: <span class="kbd">Nhập DS Word</span> → nhập niên khóa → chọn file <b>.docx</b> → AI xếp thành các lớp + học sinh → kiểm tra (sửa tên lớp, chọn cấp) → <span class="kbd">Lưu tất cả</span> (tạo lớp, tạo/khớp hồ sơ học sinh, ghi danh).</li>
   </ul>
+  <div class="tip"><b>Nhập Word:</b> chỉ hỗ trợ <b>.docx</b>; danh sách <b>dạng bảng</b> (STT · Tên thánh · Họ tên · Ngày sinh) đọc chuẩn nhất. Học sinh trùng tên người đã có sẽ được nối, không tạo trùng.</div>
+  <div class="note"><b>Chuyển năm</b> (đầu niên khóa mới, học sinh Đạt lên cấp kế tiếp) do <b>Cha xứ</b> thực hiện — xem mục 5.</div>
+  </div>
 
-  <h3>Chia sẻ &amp; Mời <span class="tag now">mới</span></h3>
-  <p>Nút <span class="kbd">Chia sẻ</span> trên menu hiện <b>Mã mời</b> (cho Ban Chức Việc đăng ký) và <b>Link khai báo</b> (cho gia đình), kèm nút chép. Cũng hiện ngay khi lập giáo xứ mới.</p>
+  <!-- 5. CHA XỨ -->
+  <h2>5. Cha xứ — Quản trị</h2>
+  <div class="role">
+  <ul>
+    <li><b>Trình tự khởi động xứ:</b> lập giáo xứ → tạo Giáo họ → rà soát Cấp lớp → nhập Hộ &amp; Giáo dân (hoặc quét AI) → lập lớp giáo lý, hội đoàn → chia link khai báo.</li>
+    <li><b>Chia sẻ &amp; Mời</b>: nút <span class="kbd">Chia sẻ</span> hiện mã mời (cho Ban Chức Việc, GLV đăng ký) và link khai báo (cho gia đình), có nút chép.</li>
+    <li><b>Chuyển năm giáo lý</b>: <span class="kbd">Chuyển năm</span> → chọn năm cũ → nhập năm mới; học sinh <b>Đạt</b> lên cấp kế tiếp; cấp cao nhất = hoàn thành chương trình. Nên tạo trước các lớp năm mới.</li>
+    <li><b>Cấp / đổi tài khoản</b> cho Ban Chức Việc, GLV (xem mục 2).</li>
+  </ul>
+  </div>
 
-  <!-- 4. AN TOÀN -->
-  <h2>4. Lưu ý an toàn dữ liệu</h2>
+  <!-- 6. AN TOÀN -->
+  <h2>6. Lưu ý an toàn dữ liệu</h2>
   <ul>
     <li><b>Bí tích là hồ sơ gốc</b> — nhập cẩn thận, đối chiếu sổ giấy; cân nhắc kỹ trước khi xóa.</li>
-    <li><b>Cha/mẹ tạo tự động</b> khi quét giấy hôn phối: soát tên để tránh tạo trùng; thỉnh thoảng rà soát danh sách.</li>
+    <li><b>Cha/mẹ &amp; học sinh tạo tự động</b> (khi quét hôn phối / nhập Word): soát tên để tránh trùng; thỉnh thoảng rà soát danh sách.</li>
     <li><b>Đăng nhập:</b> nếu bật xác nhận email, người mới phải mở email xác nhận trước khi vào.</li>
     <li><b>Sao lưu:</b> dữ liệu trên Supabase — nên bật sao lưu định kỳ.</li>
   </ul>
 
-  <div class="note" style="margin-top:22px"><b>Phần sắp bổ sung:</b> in chứng nhận bí tích · phân quyền GLV theo từng giáo họ · màn quản lý người dùng · liên mạng toàn Giáo phận.</div>
+  <div class="note" style="margin-top:22px"><b>Phần sắp bổ sung:</b> khóa quyền theo nhiệm vụ (Ban Chức Việc / GLV chỉ đụng phần của mình) · in chứng nhận bí tích · màn quản lý người dùng · liên mạng toàn Giáo phận.</div>
 
-  <div class="foot">Cẩm nang sử dụng — Hệ thống Quản lý Giáo xứ. In từ trình duyệt (Ctrl/Cmd + P) để lưu PDF hoặc phát cho Ban Chức Việc.</div>
+  <div class="foot">Cẩm nang sử dụng — Hệ thống Quản lý Giáo xứ. In từ trình duyệt (Ctrl/Cmd + P) để lưu PDF hoặc phát cho Ban Chức Việc &amp; Giáo lý viên.</div>
   </div>
 </div>
 </body>

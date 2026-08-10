@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth/mammoth.browser.min.js"></script>
 <style>
 :root{
   --bg:#f4efe4; --surface:#fffdf8; --ink:#1e2433; --muted:#6b6656;
@@ -238,6 +239,7 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
         <select id="gl_year" onchange="renderClasses()"></select>
         <button class="btn sm" onclick="openClass()">+ Lớp</button>
         <button class="btn gold sm" onclick="openPromote()">Chuyển năm</button>
+        <button class="btn sm" onclick="openImportList()">Nhập DS Word</button>
         <button class="btn ghost sm" onclick="openLevels()">Cấp lớp</button>
       </div>
       <div id="classList" class="list"></div>
@@ -465,6 +467,26 @@ main{max-width:840px;margin:0 auto;padding:16px 14px 60px}
     <div class="mh">Link khai báo cho gia đình</div>
     <p class="hint">Gửi link này để các gia đình tự điền hộ khẩu (không cần tài khoản). Đơn về sẽ nằm ở tab “Đơn gửi về”.</p>
     <div class="codebox small"><span class="val" id="sh_formlink">—</span><button class="copybtn" onclick="copyText(document.getElementById('sh_formlink').textContent,this)">Chép</button></div>
+  </div>
+</div>
+
+<!-- IMPORT LIST MODAL -->
+<div id="importListOverlay" class="overlay hidden">
+  <div class="modal">
+    <button class="close" onclick="closeImportList()">×</button>
+    <h2 class="serif">Nhập danh sách giáo lý (Word)</h2>
+    <div class="ai-scan">
+      <label>Niên khóa</label><input id="cl_year" placeholder="2025-2026"/>
+      <input id="cl_file" type="file" accept=".docx" style="display:none" onchange="onListFile(event)"/>
+      <button class="btn gold sm" style="margin-top:8px" onclick="document.getElementById('cl_file').click()">Chọn file Word (.docx)</button>
+      <div class="hint" id="cl_status" style="margin-top:6px">Chọn file Word chứa danh sách học sinh — AI đọc và xếp thành lớp. Chỉ hỗ trợ .docx.</div>
+    </div>
+    <div id="clPreview" class="hidden">
+      <div id="clClasses"></div>
+      <div class="modal-actions"><button class="btn" onclick="saveClassList()">Lưu tất cả</button></div>
+      <div class="hint">Sẽ tạo các lớp cho niên khóa trên, tạo/liên kết hồ sơ học sinh và ghi danh vào lớp. Kiểm tra trước khi lưu.</div>
+    </div>
+    <div id="clMsg"></div>
   </div>
 </div>
 
@@ -1179,6 +1201,94 @@ async function saveMarriage(){
     }
     await loadAll();closeMarriage();showTab('people');
   }catch(e){mrmsg('Lỗi khi lưu: '+e.message,'err');}
+}
+
+/* ---------- NHẬP DANH SÁCH GIÁO LÝ TỪ WORD ---------- */
+async function findOrCreateStudent(s){
+  const saint=(s.saint_name||'').trim(), name=(s.full_name||'').trim();
+  if(!name)return null;
+  const combined=((saint?saint+' ':'')+name).toLowerCase().trim();
+  if(window._pcache&&window._pcache[combined])return window._pcache[combined];
+  let id=null;
+  const found=PEOPLE.find(p=>p.full_name&&((p.saint_name?p.saint_name+' ':'')+p.full_name).toLowerCase().trim()===combined);
+  if(found)id=found.id;
+  else{
+    const {data}=await sb.from('parishioners').insert({parish_id:PARISH.id,saint_name:saint||null,full_name:name,
+      gender:(s.gender==='nam'||s.gender==='nu')?s.gender:null,
+      birth_date:(s.birth_date&&/^\d{4}-\d{2}-\d{2}$/.test(s.birth_date))?s.birth_date:null,
+      status:'approved',created_by:ME.user_id}).select().maybeSingle();
+    id=data?data.id:null;
+  }
+  if(id&&window._pcache)window._pcache[combined]=id;
+  return id;
+}
+function openImportList(){
+  window._classListData=null;
+  $('clPreview').classList.add('hidden');$('clClasses').innerHTML='';$('clMsg').innerHTML='';
+  $('cl_year').value=curYear||'';
+  $('cl_status').textContent='Chọn file Word chứa danh sách học sinh — AI đọc và xếp thành lớp. Chỉ hỗ trợ .docx.';
+  $('importListOverlay').classList.remove('hidden');
+}
+function closeImportList(){$('importListOverlay').classList.add('hidden');}
+function clmsg(t,k){$('clMsg').innerHTML=`<div class="msg ${k}">${esc(t)}</div>`;}
+function htmlToRows(html){return html.replace(/<\/tr>/gi,'\n').replace(/<\/t[dh]>/gi,' | ').replace(/<[^>]+>/g,'').replace(/&nbsp;/gi,' ').replace(/\n{2,}/g,'\n').trim();}
+async function onListFile(ev){
+  const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  if(typeof mammoth==='undefined'){$('cl_status').textContent='Chưa tải được bộ đọc Word (mạng). Thử lại sau.';return;}
+  $('cl_status').textContent='Đang đọc file Word…';
+  try{
+    const buf=await f.arrayBuffer();
+    const out=await mammoth.convertToHtml({arrayBuffer:buf});
+    const text=htmlToRows(out.value||'');
+    if(!text){$('cl_status').textContent='File trống hoặc không đọc được. Chỉ hỗ trợ .docx.';return;}
+    $('cl_status').textContent='Đang phân tích danh sách bằng AI… (5–20 giây)';
+    const r=await fetch('/api/parse-list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    if(!r.ok){let t='';try{t=(await r.json()).error||'';}catch(e){}throw new Error('máy chủ AI lỗi '+r.status+(t?' — '+t:''));}
+    const d=await r.json();
+    if(d&&d.error){$('cl_status').textContent='AI chưa đọc được: '+d.error;return;}
+    const classes=Array.isArray(d.classes)?d.classes.filter(c=>c&&Array.isArray(c.students)&&c.students.length):[];
+    if(!classes.length){$('cl_status').textContent='Không tìm thấy danh sách lớp trong file. Thử file có bảng tên rõ ràng.';return;}
+    window._classListData=classes;
+    if(d.school_year&&!$('cl_year').value)$('cl_year').value=d.school_year;
+    $('cl_status').innerHTML='<b style="color:var(--wine)">Đã đọc '+classes.length+' lớp — kiểm tra rồi bấm “Lưu tất cả”.</b>';
+    renderListPreview();
+  }catch(e){$('cl_status').textContent='Lỗi: '+e.message;}
+}
+function renderListPreview(){
+  const cs=window._classListData;
+  const lvlOpts=LEVELS.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  $('clClasses').innerHTML=cs.map((c,i)=>{
+    const names=c.students.slice(0,6).map(s=>esc(((s.saint_name?s.saint_name+' ':'')+(s.full_name||'')).trim())).join(', ');
+    return `<div class="subcard">
+      <div class="grid2">
+        <div><label>Tên lớp</label><input id="cl_${i}_name" value="${esc(c.class_name||('Lớp '+(i+1)))}"/></div>
+        <div><label>Cấp lớp</label><select id="cl_${i}_level"><option value="">— Cấp —</option>${lvlOpts}</select></div>
+      </div>
+      <div class="hint">${c.students.length} học sinh: ${esc(names)}${c.students.length>6?'…':''}</div>
+    </div>`;
+  }).join('');
+  cs.forEach((c,i)=>{const g=LEVELS.find(l=>c.level_name&&l.name.toLowerCase()===String(c.level_name).toLowerCase());if(g)$('cl_'+i+'_level').value=g.id;});
+  $('clPreview').classList.remove('hidden');
+}
+async function saveClassList(){
+  const cs=window._classListData;if(!cs)return;
+  const yr=$('cl_year').value.trim();
+  if(!yr)return clmsg('Nhập niên khóa.','err');
+  window._pcache={};
+  clmsg('Đang lưu…','ok');
+  try{
+    for(let i=0;i<cs.length;i++){
+      const name=$('cl_'+i+'_name').value.trim()||('Lớp '+(i+1));
+      const levelId=$('cl_'+i+'_level').value||null;
+      const {data:cls,error}=await sb.from('catechism_classes').insert({parish_id:PARISH.id,name,level_id:levelId,school_year:yr}).select().maybeSingle();
+      if(error)throw error;
+      for(const s of cs[i].students){
+        const pid=await findOrCreateStudent(s);
+        if(pid)await sb.from('catechism_enrollments').insert({parish_id:PARISH.id,school_year:yr,level_id:levelId,class_id:cls.id,parishioner_id:pid,result:'pending'});
+      }
+    }
+    curYear=yr;await loadAll();closeImportList();showTab('gl');$('gl_year').value=yr;renderClasses();
+  }catch(e){clmsg('Lỗi khi lưu: '+e.message,'err');}
 }
 
 /* ---------- START ---------- */
